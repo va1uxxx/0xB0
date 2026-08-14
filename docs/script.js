@@ -170,19 +170,33 @@
             alert('No data to download.');
             return;
         }
+
+        // Extract hostname from the first entry
+        let hostname = 'unknown';
+        const firstBody = entries[0].querySelector('.entry-body');
+        if (firstBody) {
+            const text = firstBody.textContent;
+            const match = text.match(/Hostname:\s*([^\n]+)/);
+            if (match) {
+                hostname = match[1].trim();
+            }
+        }
+        // Sanitize hostname for filename
+        hostname = hostname.replace(/[^a-zA-Z0-9\-_]/g, '');
+
         const zip = new JSZip();
         entries.forEach((entry, idx) => {
             const bodyDiv = entry.querySelector('.entry-body');
             if (bodyDiv) {
                 const text = bodyDiv.textContent.trim();
-                const fileName = `entry_${idx+1}.txt`;
+                const fileName = entries.length === 1 ? `${hostname}.txt` : `${hostname}_${idx+1}.txt`;
                 zip.file(fileName, text);
             }
         });
         zip.generateAsync({ type: 'blob' }).then(function(content) {
             const link = document.createElement('a');
             link.href = URL.createObjectURL(content);
-            link.download = `0xB0_exfil_${new Date().toISOString().slice(0,10)}.zip`;
+            link.download = `0xB0_exfil_${hostname}_${new Date().toISOString().slice(0,10)}.zip`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
