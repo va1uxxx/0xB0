@@ -40,7 +40,7 @@
             loginError.textContent = '';
             showDashboard();
         } else {
-            loginError.textContent = 'Invalid username or password.';
+            loginError.textContent = 'ACCESS DENIED';
             usernameInput.value = '';
             passwordInput.value = '';
             usernameInput.focus();
@@ -71,7 +71,7 @@
     const REPO = 'va1uxxx/0xB0';
     const API_URL = `https://api.github.com/repos/${REPO}/issues`;
     async function fetchExfilData() {
-        const placeholder = `<div class="placeholder"><i class="fas fa-spinner spinner"></i> Fetching data...</div>`;
+        const placeholder = `<div class="placeholder"><i class="fas fa-spinner spinner"></i> FETCHING DATA...</div>`;
         logContainer.innerHTML = placeholder;
         try {
             const response = await fetch(API_URL, {
@@ -80,7 +80,7 @@
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const issues = await response.json();
             if (!Array.isArray(issues) || issues.length === 0) {
-                logContainer.innerHTML = `<div class="placeholder"><i class="fas fa-inbox"></i> No data received yet.</div>`;
+                logContainer.innerHTML = `<div class="placeholder"><i class="fas fa-inbox"></i> NO DATA RECEIVED</div>`;
                 return;
             }
             const sorted = issues.slice().reverse();
@@ -101,18 +101,18 @@
                     decoded = decoded.substring(0, 2500);
                 }
                 const displayBody = escapeHtml(decoded);
-                const truncatedMark = isTruncated ? '<span class="truncated"> … (truncated)</span>' : '';
+                const truncatedMark = isTruncated ? ' <span style="color:#4a5a6a;">… (truncated)</span>' : '';
                 html += `
                     <div class="entry">
                         <div class="entry-header">
-                            <span class="entry-title"><i class="fas fa-file-alt" style="color:#6b7280;margin-right:8px;"></i>${title}</span>
+                            <span class="entry-title"><i class="fas fa-file-alt" style="color:#4a5a6a;margin-right:8px;"></i>${title}</span>
                             <span class="entry-time"><i class="far fa-clock"></i> ${time}</span>
                         </div>
                         <div class="entry-body">
                             ${displayBody}${truncatedMark}
                         </div>
                         <div style="text-align:right;margin-top:6px;">
-                            <button class="copy-btn" data-copy="${escapeHtml(decoded)}"><i class="fas fa-copy"></i> Copy</button>
+                            <button class="copy-btn" data-copy="${escapeHtml(decoded)}"><i class="fas fa-copy"></i> COPY</button>
                         </div>
                     </div>
                 `;
@@ -123,13 +123,13 @@
                     const text = this.getAttribute('data-copy');
                     navigator.clipboard.writeText(text).then(() => {
                         const original = this.innerHTML;
-                        this.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                        this.innerHTML = '<i class="fas fa-check"></i> COPIED';
                         setTimeout(() => { this.innerHTML = original; }, 1500);
                     }).catch(() => {});
                 });
             });
         } catch (err) {
-            logContainer.innerHTML = `<div class="error-msg"><i class="fas fa-triangle-exclamation"></i> Error: ${escapeHtml(err.message)}</div>`;
+            logContainer.innerHTML = `<div class="error-msg"><i class="fas fa-triangle-exclamation"></i> ERROR: ${escapeHtml(err.message)}</div>`;
         }
     }
     function escapeHtml(str) {
