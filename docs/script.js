@@ -40,7 +40,7 @@
             loginError.textContent = '';
             showDashboard();
         } else {
-            loginError.textContent = '❌ Invalid username or password.';
+            loginError.textContent = 'Invalid username or password.';
             usernameInput.value = '';
             passwordInput.value = '';
             usernameInput.focus();
@@ -105,7 +105,7 @@
                 html += `
                     <div class="entry">
                         <div class="entry-header">
-                            <span class="entry-title"><i class="fas fa-file-alt" style="color:#6e7681;margin-right:8px;"></i>${title}</span>
+                            <span class="entry-title"><i class="fas fa-file-alt" style="color:#6b7280;margin-right:8px;"></i>${title}</span>
                             <span class="entry-time"><i class="far fa-clock"></i> ${time}</span>
                         </div>
                         <div class="entry-body">
