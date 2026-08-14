@@ -5,22 +5,37 @@
     const HASH_PASS = '7ef461cec5e3f823e0724d62cb57b46e875a8690f1c1917c4d773cb2cb5a86ed';
 
     async function hashString(str) {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(str);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        try {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(str);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        } catch {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return Math.abs(hash).toString(16).padStart(64, '0');
+        }
     }
 
-    const loginPage = document.getElementById('loginPage');
-    const dashboardPage = document.getElementById('dashboardPage');
-    const loginForm = document.getElementById('loginForm');
-    const usernameInput = document.getElementById('username');
-    const passwordInput = document.getElementById('password');
-    const loginError = document.getElementById('loginError');
-    const logContainer = document.getElementById('logContainer');
-    const refreshBtn = document.getElementById('refreshBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
+    let loginPage, dashboardPage, loginForm, usernameInput, passwordInput, loginError, logContainer, refreshBtn, logoutBtn;
+
+    function initElements() {
+        loginPage = document.getElementById('loginPage');
+        dashboardPage = document.getElementById('dashboardPage');
+        loginForm = document.getElementById('loginForm');
+        usernameInput = document.getElementById('username');
+        passwordInput = document.getElementById('password');
+        loginError = document.getElementById('loginError');
+        logContainer = document.getElementById('logContainer');
+        refreshBtn = document.getElementById('refreshBtn');
+        logoutBtn = document.getElementById('logoutBtn');
+    }
+
     const SESSION_KEY = '0xB0_auth';
 
     function isLoggedIn() {
@@ -31,32 +46,8 @@
         sessionStorage.setItem(SESSION_KEY, state ? 'true' : 'false');
     }
 
-    loginForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const user = usernameInput.value.trim();
-        const pass = passwordInput.value.trim();
-
-        if (user === '' || pass === '') {
-            loginError.textContent = 'ENTER CREDENTIALS';
-            return;
-        }
-
-        const hashUser = await hashString(user);
-        const hashPass = await hashString(pass);
-
-        if (hashUser === HASH_USER && hashPass === HASH_PASS) {
-            setLoggedIn(true);
-            loginError.textContent = '';
-            showDashboard();
-        } else {
-            loginError.textContent = 'ACCESS DENIED';
-            usernameInput.value = '';
-            passwordInput.value = '';
-            usernameInput.focus();
-        }
-    });
-
     function showDashboard() {
+        if (!loginPage || !dashboardPage) return;
         loginPage.style.display = 'none';
         dashboardPage.style.display = 'block';
         fetchExfilData();
@@ -65,26 +56,88 @@
     }
 
     function showLogin() {
+        if (!loginPage || !dashboardPage) return;
         loginPage.style.display = 'block';
         dashboardPage.style.display = 'none';
         if (window._refreshInterval) {
             clearInterval(window._refreshInterval);
             window._refreshInterval = null;
         }
-        usernameInput.value = '';
-        passwordInput.value = '';
-        loginError.textContent = '';
+        if (usernameInput) usernameInput.value = '';
+        if (passwordInput) passwordInput.value = '';
+        if (loginError) loginError.textContent = '';
     }
 
-    logoutBtn.addEventListener('click', function() {
-        setLoggedIn(false);
-        showLogin();
-    });
+    function init() {
+        initElements();
+        if (!loginPage || !dashboardPage) {
+            console.error('Required DOM elements missing.');
+            return;
+        }
+
+        if (loginForm) {
+            loginForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                if (!usernameInput || !passwordInput || !loginError) return;
+                const user = usernameInput.value.trim();
+                const pass = passwordInput.value.trim();
+
+                if (user === '' || pass === '') {
+                    loginError.textContent = 'ENTER CREDENTIALS';
+                    return;
+                }
+
+                const hashUser = await hashString(user);
+                const hashPass = await hashString(pass);
+
+                if (hashUser === HASH_USER && hashPass === HASH_PASS) {
+                    setLoggedIn(true);
+                    loginError.textContent = '';
+                    showDashboard();
+                } else {
+                    loginError.textContent = 'ACCESS DENIED';
+                    usernameInput.value = '';
+                    passwordInput.value = '';
+                    usernameInput.focus();
+                }
+            });
+        }
+
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', function() {
+                setLoggedIn(false);
+                showLogin();
+            });
+        }
+
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', function() {
+                this.innerHTML = '<i class="fas fa-spinner spinner"></i>';
+                fetchExfilData().finally(() => {
+                    this.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
+                });
+            });
+        }
+
+        if (isLoggedIn()) {
+            showDashboard();
+        } else {
+            showLogin();
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && isLoggedIn()) {
+                setLoggedIn(false);
+                showLogin();
+            }
+        });
+    }
 
     const REPO = 'va1uxxx/0xB0';
     const API_URL = `https://api.github.com/repos/${REPO}/issues`;
 
     async function fetchExfilData() {
+        if (!logContainer) return;
         const placeholder = `<div class="placeholder"><i class="fas fa-spinner spinner"></i> FETCHING DATA...</div>`;
         logContainer.innerHTML = placeholder;
         try {
@@ -159,23 +212,9 @@
         return str.replace(/[&<>"']/g, function(m) { return map[m]; });
     }
 
-    refreshBtn.addEventListener('click', function() {
-        this.innerHTML = '<i class="fas fa-spinner spinner"></i>';
-        fetchExfilData().finally(() => {
-            this.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
-        });
-    });
-
-    if (isLoggedIn()) {
-        showDashboard();
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
     } else {
-        showLogin();
+        init();
     }
-
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && isLoggedIn()) {
-            setLoggedIn(false);
-            showLogin();
-        }
-    });
 })();
