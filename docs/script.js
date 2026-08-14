@@ -36,6 +36,11 @@
         const user = usernameInput.value.trim();
         const pass = passwordInput.value.trim();
 
+        if (user === '' || pass === '') {
+            loginError.textContent = 'ENTER CREDENTIALS';
+            return;
+        }
+
         const hashUser = await hashString(user);
         const hashPass = await hashString(pass);
 
