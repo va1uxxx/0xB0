@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>0xB0 · Collector</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <link rel="stylesheet" href="style.css" />
 </head>
 <body>
     <div class="glitch-overlay"></div>
     <div class="scanline"></div>
 
-    <!-- LOGIN PAGE – added id="loginPage" -->
     <div id="loginPage" class="container">
         <div class="login-box">
             <div class="header">
@@ -42,13 +42,13 @@
         </div>
     </div>
 
-    <!-- DASHBOARD PAGE -->
     <div id="dashboardPage" style="display:none;">
         <div class="dash-container">
             <div class="dash-header">
                 <h1><i class="fas fa-satellite-dish"></i> 0xB0 · Exfil</h1>
                 <div class="dash-actions">
                     <span class="status-badge"><span class="dot"></span> Live</span>
+                    <button id="downloadBtn" class="btn-outline"><i class="fas fa-file-archive"></i> Download ZIP</button>
                     <button id="refreshBtn" class="btn-outline"><i class="fas fa-sync-alt"></i> Refresh</button>
                     <button id="logoutBtn" class="btn-outline btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</button>
                 </div>
