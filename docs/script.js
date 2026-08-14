@@ -3,7 +3,7 @@
 
     const HASH_USER = '0ca1574299693aaeb821647cf4c897a153bea29fafb12db28257a1ed61ce58d0';
     const HASH_PASS = '7ef461cec5e3f823e0724d62cb57b46e875a8690f1c1917c4d773cb2cb5a86ed';
-    const GITHUB_TOKEN = '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';
+    const GITHUB_TOKEN = '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';
     const REPO = 'va1uxxx/0xB0';
     const API_URL = `https://api.github.com/repos/${REPO}/issues`;
 
