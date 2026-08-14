@@ -8,33 +8,43 @@
     <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    <div class="orb orb1"></div>
-    <div class="orb orb2"></div>
-    <div class="orb orb3"></div>
-    <div class="glass">
-        <div id="loginPage">
-            <div class="logo">0xB0</div>
-            <div class="sub">&#128737; Collector Dashboard</div>
+    <div class="glitch-overlay"></div>
+    <div class="scanline"></div>
+    <div class="container">
+        <div class="login-box">
+            <div class="header">
+                <div class="badge">● SECURE</div>
+                <div class="logo">0xB0</div>
+                <div class="subtitle">collector dashboard</div>
+                <div class="divider"></div>
+            </div>
             <form id="loginForm" autocomplete="off">
                 <div class="input-group">
                     <i class="fas fa-user"></i>
-                    <input type="text" id="username" placeholder="Username" required />
+                    <input type="text" id="username" placeholder="USERNAME" required />
                 </div>
                 <div class="input-group">
                     <i class="fas fa-lock"></i>
-                    <input type="password" id="password" placeholder="Password" required />
+                    <input type="password" id="password" placeholder="PASSWORD" required />
                 </div>
                 <button type="submit" class="btn-primary">
-                    <span>Sign In</span>
+                    <span>ACCESS</span>
                     <i class="fas fa-arrow-right"></i>
                 </button>
                 <div id="loginError" class="login-error"></div>
             </form>
+            <div class="footer">
+                <span class="status">● system online</span>
+                <span class="version">v2.4.1</span>
+            </div>
         </div>
-        <div id="dashboardPage">
+    </div>
+
+    <div id="dashboardPage" style="display:none;">
+        <div class="dash-container">
             <div class="dash-header">
-                <h1><i class="fas fa-satellite-dish" style="background:none;-webkit-text-fill-color:#58a6ff;margin-right:10px;"></i> 0xB0 · Exfil</h1>
-                <div class="actions">
+                <h1><i class="fas fa-satellite-dish"></i> 0xB0 · Exfil</h1>
+                <div class="dash-actions">
                     <span class="status-badge"><span class="dot"></span> Live</span>
                     <button id="refreshBtn" class="btn-outline"><i class="fas fa-sync-alt"></i> Refresh</button>
                     <button id="logoutBtn" class="btn-outline btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</button>
@@ -45,6 +55,7 @@
             </div>
         </div>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>
